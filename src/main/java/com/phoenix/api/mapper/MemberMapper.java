@@ -8,12 +8,12 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface MemberMapper extends BaseMapper<MemberEntity> {
-    @Select("SELECT * FROM member WHERE email = #{email}")
+    @Select("SELECT * FROM tb_member WHERE email = #{email}")
     MemberEntity findByEmail(@Param("email") String email);
 
-    @Select("SELECT * FROM member WHERE mobile = #{mobile}")
+    @Select("SELECT * FROM tb_member WHERE mobile = #{mobile}")
     MemberEntity findByMobile(@Param("mobile") String mobile);
 
-    @Select("SELECT m.*, u.head_ico FROM member m JOIN \"user\" u ON m.user_id = u.id WHERE m.user_id = #{userId}")
+    @Select("SELECT m.*, u.head_ico FROM tb_member m JOIN tb_user u ON m.user_id = u.id WHERE m.user_id = #{userId}")
     MemberEntity findByUserIdWithHeadIco(@Param("userId") Long userId);
 }
