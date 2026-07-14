@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data
-@TableName("user_group")
+@TableName("tb_user_group")
 public class UserGroupEntity {
     @TableId(type = IdType.AUTO)
     private Long id;

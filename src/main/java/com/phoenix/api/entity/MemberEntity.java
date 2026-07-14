@@ -9,7 +9,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("member")
+@TableName("tb_member")
 public class MemberEntity {
     @TableId(type = IdType.AUTO)
     private Long id;

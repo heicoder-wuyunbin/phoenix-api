@@ -36,7 +36,13 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/user/oauth-login",
                         "/api/user/oauth-callback",
                         "/api/user/bind-existing-user",
-                        "/api/user/bind-not-existing-user"
+                        "/api/user/bind-not-existing-user",
+                        "/api/goods/list",
+                        "/api/category/list",
+                        "/doc.html",
+                        "/swagger-resources/**",
+                        "/webjars/**",
+                        "/v3/api-docs/**"
                 );
     }
 }

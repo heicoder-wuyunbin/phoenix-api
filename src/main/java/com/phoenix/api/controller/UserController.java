@@ -5,6 +5,8 @@ import com.phoenix.api.dto.request.RegisterDTO;
 import com.phoenix.api.dto.response.LoginResponseDTO;
 import com.phoenix.api.result.Result;
 import com.phoenix.api.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,10 +14,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
+@Tag(name = "用户管理", description = "用户登录、注册、验证码等接口")
 public class UserController {
 
     private final UserService userService;
 
+    @Operation(summary = "用户登录")
     @PostMapping("/login")
     public Result<LoginResponseDTO> login(@Valid @RequestBody LoginDTO loginDTO) {
         LoginResponseDTO response = userService.login(loginDTO);

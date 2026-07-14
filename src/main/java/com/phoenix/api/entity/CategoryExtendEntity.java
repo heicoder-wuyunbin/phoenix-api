@@ -6,11 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data
-@TableName("tb_user")
-public class UserEntity {
+@TableName("tb_category_extend")
+public class CategoryExtendEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String username;
-    private String password;
-    private String headIco;
+    private Long goodsId;
+    private Long categoryId;
 }
