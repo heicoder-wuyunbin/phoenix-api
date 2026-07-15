@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserController 单元测试")
+@SuppressWarnings("null")
 class UserControllerTest {
 
     private MockMvc mockMvc;

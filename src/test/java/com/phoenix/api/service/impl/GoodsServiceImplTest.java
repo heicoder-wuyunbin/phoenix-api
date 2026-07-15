@@ -27,6 +27,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("GoodsServiceImpl 单元测试")
+@SuppressWarnings({"null", "unchecked"})
 class GoodsServiceImplTest {
 
     @Mock

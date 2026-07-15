@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @DisplayName("用户模块集成测试")
+@SuppressWarnings("null")
 class UserIntegrationTest extends BaseIntegrationTest {
 
     @Autowired

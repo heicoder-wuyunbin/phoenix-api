@@ -28,7 +28,7 @@ public class CaptchaUtil {
 
     public byte[] generateCaptcha(String key) throws IOException {
         String code = generateCode();
-        redisTemplate.opsForValue().set("captcha:" + key, code, 5, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set("captcha:" + key, code != null ? code : "", 5, TimeUnit.MINUTES);
 
         BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics g = image.getGraphics();
@@ -50,7 +50,7 @@ public class CaptchaUtil {
 
         for (int i = 0; i < CODE_LENGTH; i++) {
             g.setColor(new Color(random.nextInt(200), random.nextInt(200), random.nextInt(200)));
-            g.drawString(String.valueOf(code.charAt(i)), 20 + i * 20, 28 + random.nextInt(6));
+            g.drawString(String.valueOf(code != null ? code.charAt(i) : ' '), 20 + i * 20, 28 + random.nextInt(6));
         }
 
         for (int i = 0; i < 5; i++) {

@@ -135,7 +135,7 @@ public class UserServiceImpl implements UserService {
 
         String mobileCode = String.valueOf(new Random().nextInt(9000) + 1000);
         SmsUtil.send(mobile, mobileCode);
-        redisTemplate.opsForValue().set("code:" + mobile, mobileCode, 5, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set("code:" + mobile, mobileCode != null ? mobileCode : "", 5, TimeUnit.MINUTES);
     }
 
     @Override

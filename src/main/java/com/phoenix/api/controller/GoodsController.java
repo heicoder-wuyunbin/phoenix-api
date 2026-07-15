@@ -1,14 +1,13 @@
 package com.phoenix.api.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.phoenix.api.dto.GoodsAddDTO;
 import com.phoenix.api.result.Result;
 import com.phoenix.api.service.GoodsService;
 import com.phoenix.api.vo.GoodsVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/goods")
@@ -24,5 +23,38 @@ public class GoodsController {
             @RequestParam(defaultValue = "10") Integer pageSize) {
         Page<GoodsVO> page = goodsService.getGoodsList(categoryId, pageNum, pageSize);
         return Result.success(page);
+    }
+
+    /**
+     * 新增商品
+     * @param dto 商品信息
+     * @return 操作结果
+     */
+    @PostMapping
+    public Result<String> add(@Valid @RequestBody GoodsAddDTO dto) {
+        boolean success = goodsService.addGoods(dto);
+        return success ? Result.success("添加成功") : Result.error("添加失败");
+    }
+
+    /**
+     * 商品上架
+     * @param id 商品ID
+     * @return 操作结果
+     */
+    @PutMapping("/{id}/on")
+    public Result<String> putOnSale(@PathVariable Long id) {
+        boolean success = goodsService.putOnSale(id);
+        return success ? Result.success("上架成功") : Result.error("上架失败");
+    }
+
+    /**
+     * 商品下架
+     * @param id 商品ID
+     * @return 操作结果
+     */
+    @PutMapping("/{id}/off")
+    public Result<String> putOffSale(@PathVariable Long id) {
+        boolean success = goodsService.putOffSale(id);
+        return success ? Result.success("下架成功") : Result.error("下架失败");
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("JwtUtil 单元测试")
+@SuppressWarnings("null")
 class JwtUtilTest {
 
     private JwtUtil jwtUtil;

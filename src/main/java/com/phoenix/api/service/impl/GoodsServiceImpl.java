@@ -1,7 +1,9 @@
 package com.phoenix.api.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.phoenix.api.dto.GoodsAddDTO;
 import com.phoenix.api.entity.CategoryEntity;
 import com.phoenix.api.entity.CategoryExtendEntity;
 import com.phoenix.api.entity.GoodsEntity;
@@ -13,6 +15,7 @@ import com.phoenix.api.vo.GoodsVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -97,5 +100,52 @@ public class GoodsServiceImpl implements GoodsService {
                         .eq(CategoryEntity::getParentId, 0)
                         .orderByAsc(CategoryEntity::getSort)
         );
+    }
+
+    @Override
+    public boolean addGoods(GoodsAddDTO dto) {
+        GoodsEntity entity = new GoodsEntity();
+        entity.setName(dto.getName());
+        entity.setImg(dto.getImg());
+        entity.setSellPrice(dto.getSellPrice());
+        entity.setStoreNums(dto.getStoreNums());
+        entity.setSale(0);
+        entity.setCreateTime(LocalDateTime.now());
+        entity.setIsDel(false);
+
+        int rows = goodsMapper.insert(entity);
+        if (rows <= 0) {
+            return false;
+        }
+
+        // 如果指定了分类，建立关联关系
+        if (dto.getCategoryId() != null && dto.getCategoryId() > 0) {
+            CategoryExtendEntity extend = new CategoryExtendEntity();
+            extend.setGoodsId(entity.getId());
+            extend.setCategoryId(dto.getCategoryId());
+            categoryExtendMapper.insert(extend);
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean putOnSale(Long id) {
+        LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(GoodsEntity::getId, id)
+                .set(GoodsEntity::getIsDel, false)
+                .set(GoodsEntity::getUpTime, LocalDateTime.now())
+                .set(GoodsEntity::getDownTime, null);
+        return goodsMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean putOffSale(Long id) {
+        LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(GoodsEntity::getId, id)
+                .set(GoodsEntity::getIsDel, true)
+                .set(GoodsEntity::getUpTime, null)
+                .set(GoodsEntity::getDownTime, LocalDateTime.now());
+        return goodsMapper.update(null, wrapper) > 0;
     }
 }

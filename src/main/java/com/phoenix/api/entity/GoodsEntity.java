@@ -20,6 +20,8 @@ public class GoodsEntity {
     private Integer storeNums;
     private Integer sale;
     private LocalDateTime createTime;
+    private LocalDateTime upTime;
+    private LocalDateTime downTime;
     @TableLogic(value = "false", delval = "true")
     private Boolean isDel;
 }
