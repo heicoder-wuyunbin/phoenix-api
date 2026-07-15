@@ -108,7 +108,12 @@ public class GoodsServiceImpl implements GoodsService {
         entity.setName(dto.getName());
         entity.setImg(dto.getImg());
         entity.setSellPrice(dto.getSellPrice());
+        entity.setMarketPrice(dto.getMarketPrice());
+        entity.setCostPrice(dto.getCostPrice());
         entity.setStoreNums(dto.getStoreNums());
+        entity.setSort(dto.getSort() != null ? dto.getSort() : 99);
+        entity.setKeywords(dto.getKeywords());
+        entity.setContent(dto.getContent());
         entity.setSale(0);
         entity.setCreateTime(LocalDateTime.now());
         entity.setIsDel(false);

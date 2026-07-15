@@ -17,8 +17,13 @@ public class GoodsEntity {
     private String name;
     private String img;
     private BigDecimal sellPrice;
+    private BigDecimal marketPrice;
+    private BigDecimal costPrice;
     private Integer storeNums;
     private Integer sale;
+    private Integer sort;
+    private String keywords;
+    private String content;
     private LocalDateTime createTime;
     private LocalDateTime upTime;
     private LocalDateTime downTime;

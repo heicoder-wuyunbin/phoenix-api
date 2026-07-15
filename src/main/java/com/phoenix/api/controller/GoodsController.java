@@ -2,6 +2,7 @@ package com.phoenix.api.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.phoenix.api.dto.GoodsAddDTO;
+import com.phoenix.api.entity.CategoryEntity;
 import com.phoenix.api.result.Result;
 import com.phoenix.api.service.GoodsService;
 import com.phoenix.api.vo.GoodsVO;
@@ -9,12 +10,24 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/goods")
 @RequiredArgsConstructor
 public class GoodsController {
 
     private final GoodsService goodsService;
+
+    /**
+     * 获取商品分类列表
+     * @return 分类列表
+     */
+    @GetMapping("/categories")
+    public Result<List<CategoryEntity>> categories() {
+        List<CategoryEntity> list = goodsService.getCategoryList();
+        return Result.success(list);
+    }
 
     @GetMapping("/list")
     public Result<Page<GoodsVO>> list(

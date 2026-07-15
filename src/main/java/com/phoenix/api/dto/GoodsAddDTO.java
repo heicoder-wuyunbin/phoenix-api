@@ -19,9 +19,22 @@ public class GoodsAddDTO {
     @DecimalMin(value = "0.01", message = "售价必须大于0")
     private BigDecimal sellPrice;
 
+    @DecimalMin(value = "0", message = "市场价不能小于0")
+    private BigDecimal marketPrice;
+
+    @DecimalMin(value = "0", message = "成本价不能小于0")
+    private BigDecimal costPrice;
+
     @NotNull(message = "库存不能为空")
     @Min(value = 0, message = "库存不能小于0")
     private Integer storeNums;
+
+    @Min(value = 0, message = "排序值不能小于0")
+    private Integer sort;
+
+    private String keywords;
+
+    private String content;
 
     private Long categoryId;
 }
