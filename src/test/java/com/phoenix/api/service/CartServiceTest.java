@@ -236,13 +236,13 @@ class CartServiceTest {
         goods1.setId(200L);
         goods1.setName("商品A");
         goods1.setImg("goods1.jpg");
-        goods1.setIsDel(false);
+        goods1.setIsDel(0);
 
         GoodsEntity goods2 = new GoodsEntity();
         goods2.setId(201L);
         goods2.setName("商品B");
         goods2.setImg("goods2.jpg");
-        goods2.setIsDel(false);
+        goods2.setIsDel(0);
 
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         when(hashOperations.entries(key)).thenReturn(cartMap);

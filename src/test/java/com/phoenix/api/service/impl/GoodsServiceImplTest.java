@@ -1,6 +1,7 @@
 package com.phoenix.api.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.phoenix.api.entity.CategoryEntity;
 import com.phoenix.api.entity.CategoryExtendEntity;
@@ -8,6 +9,9 @@ import com.phoenix.api.entity.GoodsEntity;
 import com.phoenix.api.mapper.CategoryExtendMapper;
 import com.phoenix.api.mapper.CategoryMapper;
 import com.phoenix.api.mapper.GoodsMapper;
+import com.phoenix.api.mapper.GoodsPhotoMapper;
+import com.phoenix.api.mapper.GoodsPhotoRelationMapper;
+import com.phoenix.api.mapper.ProductMapper;
 import com.phoenix.api.vo.GoodsVO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +43,15 @@ class GoodsServiceImplTest {
     @Mock
     private CategoryExtendMapper categoryExtendMapper;
 
+    @Mock
+    private ProductMapper productMapper;
+
+    @Mock
+    private GoodsPhotoMapper goodsPhotoMapper;
+
+    @Mock
+    private GoodsPhotoRelationMapper goodsPhotoRelationMapper;
+
     @InjectMocks
     private GoodsServiceImpl goodsService;
 
@@ -52,6 +65,7 @@ class GoodsServiceImplTest {
         goods1.setSellPrice(new BigDecimal("99.99"));
         goods1.setSale(100);
         goods1.setStoreNums(50);
+        goods1.setIsDel(GoodsEntity.STATUS_ON_SALE);
 
         Page<GoodsEntity> entityPage = new Page<>(1, 10, 1);
         entityPage.setRecords(Collections.singletonList(goods1));
@@ -92,6 +106,7 @@ class GoodsServiceImplTest {
         goods.setSellPrice(new BigDecimal("59.99"));
         goods.setSale(50);
         goods.setStoreNums(20);
+        goods.setIsDel(GoodsEntity.STATUS_ON_SALE);
 
         Page<GoodsEntity> entityPage = new Page<>(1, 10, 1);
         entityPage.setRecords(Collections.singletonList(goods));
@@ -160,4 +175,5 @@ class GoodsServiceImplTest {
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
-}
+
+    }

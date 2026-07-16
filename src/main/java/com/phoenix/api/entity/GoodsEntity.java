@@ -3,7 +3,6 @@ package com.phoenix.api.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -15,6 +14,7 @@ public class GoodsEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String name;
+    private String goodsNo;
     private String img;
     private BigDecimal sellPrice;
     private BigDecimal marketPrice;
@@ -27,6 +27,10 @@ public class GoodsEntity {
     private LocalDateTime createTime;
     private LocalDateTime upTime;
     private LocalDateTime downTime;
-    @TableLogic(value = "false", delval = "true")
-    private Boolean isDel;
+    private Integer isDel;
+
+    public static final Integer STATUS_ON_SALE = 0;
+    public static final Integer STATUS_DELETED = 1;
+    public static final Integer STATUS_OFF_SALE = 2;
+    public static final Integer STATUS_PENDING_REVIEW = 3;
 }

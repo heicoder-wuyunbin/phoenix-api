@@ -9,11 +9,15 @@ import com.phoenix.api.dto.GoodsAddDTO;
 import com.phoenix.api.entity.CategoryEntity;
 import com.phoenix.api.entity.CategoryExtendEntity;
 import com.phoenix.api.entity.GoodsEntity;
+import com.phoenix.api.entity.GoodsPhotoEntity;
+import com.phoenix.api.entity.GoodsPhotoRelationEntity;
 import com.phoenix.api.entity.ProductEntity;
 import com.phoenix.api.exception.BusinessException;
 import com.phoenix.api.mapper.CategoryExtendMapper;
 import com.phoenix.api.mapper.CategoryMapper;
 import com.phoenix.api.mapper.GoodsMapper;
+import com.phoenix.api.mapper.GoodsPhotoMapper;
+import com.phoenix.api.mapper.GoodsPhotoRelationMapper;
 import com.phoenix.api.mapper.ProductMapper;
 import com.phoenix.api.service.GoodsService;
 import com.phoenix.api.vo.GoodsDetailVO;
@@ -22,7 +26,9 @@ import com.phoenix.api.vo.SkuVO;
 import com.phoenix.api.vo.SpecTreeVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,17 +41,27 @@ public class GoodsServiceImpl implements GoodsService {
     private final CategoryMapper categoryMapper;
     private final CategoryExtendMapper categoryExtendMapper;
     private final ProductMapper productMapper;
+    private final GoodsPhotoMapper goodsPhotoMapper;
+    private final GoodsPhotoRelationMapper goodsPhotoRelationMapper;
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public Page<GoodsVO> getGoodsList(Long categoryId, Integer pageNum, Integer pageSize) {
-        // 构建查询条件
+        return getGoodsList(categoryId, pageNum, pageSize, null);
+    }
+
+    @Override
+    public Page<GoodsVO> getGoodsList(Long categoryId, Integer pageNum, Integer pageSize, Integer status) {
         LambdaQueryWrapper<GoodsEntity> wrapper = new LambdaQueryWrapper<>();
         
-        // 如果指定了分类，需要通过 tb_category_extend 表关联查询
+        if (status == null) {
+            wrapper.eq(GoodsEntity::getIsDel, GoodsEntity.STATUS_ON_SALE);
+        } else {
+            wrapper.eq(GoodsEntity::getIsDel, status);
+        }
+        
         if (categoryId != null && categoryId != 0) {
-            // 先查询该分类下的所有商品 ID
             List<CategoryExtendEntity> categoryExtends = categoryExtendMapper.selectList(
                 new LambdaQueryWrapper<CategoryExtendEntity>()
                     .eq(CategoryExtendEntity::getCategoryId, categoryId)
@@ -55,31 +71,29 @@ public class GoodsServiceImpl implements GoodsService {
                 .collect(Collectors.toList());
             
             if (goodsIds.isEmpty()) {
-                // 该分类下没有商品，返回空结果
                 return new Page<>(pageNum, pageSize, 0);
             }
             
             wrapper.in(GoodsEntity::getId, goodsIds);
         }
         
-        // 按销量降序排序
         wrapper.orderByDesc(GoodsEntity::getSale);
         
-        // 使用内置方法分页查询
         Page<GoodsEntity> entityPage = new Page<>(pageNum, pageSize);
         Page<GoodsEntity> goodsPage = goodsMapper.selectPage(entityPage, wrapper);
         
-        // 获取所有分类关联信息
         List<CategoryExtendEntity> allCategoryExtends = categoryExtendMapper.selectList(null);
         Map<Long, Long> goodsToCategoryMap = allCategoryExtends.stream()
-                .collect(Collectors.toMap(CategoryExtendEntity::getGoodsId, CategoryExtendEntity::getCategoryId));
+                .collect(Collectors.toMap(
+                        CategoryExtendEntity::getGoodsId,
+                        CategoryExtendEntity::getCategoryId,
+                        (existing, replacement) -> existing
+                ));
         
-        // 获取所有分类信息用于转换
         List<CategoryEntity> allCategories = categoryMapper.selectList(null);
         Map<Long, String> categoryMap = allCategories.stream()
                 .collect(Collectors.toMap(CategoryEntity::getId, CategoryEntity::getName));
         
-        // 转换为 VO
         Page<GoodsVO> voPage = new Page<>(goodsPage.getCurrent(), goodsPage.getSize(), goodsPage.getTotal());
         List<GoodsVO> voList = goodsPage.getRecords().stream()
                 .map(entity -> {
@@ -90,7 +104,7 @@ public class GoodsServiceImpl implements GoodsService {
                     vo.setPrice(entity.getSellPrice());
                     vo.setSales(entity.getSale());
                     vo.setStock(entity.getStoreNums());
-                    // 设置分类名称
+                    vo.setIsDel(entity.getIsDel() != null && entity.getIsDel() != 0);
                     Long goodsCategoryId = goodsToCategoryMap.get(entity.getId());
                     if (goodsCategoryId != null) {
                         vo.setCategoryName(categoryMap.get(goodsCategoryId));
@@ -113,10 +127,57 @@ public class GoodsServiceImpl implements GoodsService {
     }
 
     @Override
+    public List<CategoryEntity> getAllCategoryList() {
+        return categoryMapper.selectList(
+                new LambdaQueryWrapper<CategoryEntity>()
+                        .orderByAsc(CategoryEntity::getSort)
+        );
+    }
+
+    @Override
+    public void saveCategory(CategoryEntity category) {
+        if (category.getName() == null || category.getName().trim().isEmpty()) {
+            throw new BusinessException("分类名称不能为空");
+        }
+        if (category.getParentId() == null) {
+            category.setParentId(0);
+        }
+        if (category.getSort() == null) {
+            category.setSort(99);
+        }
+        if (category.getId() != null && category.getId() > 0) {
+            categoryMapper.updateById(category);
+        } else {
+            category.setId(null);
+            categoryMapper.insert(category);
+        }
+    }
+
+    @Override
+    public void deleteCategory(Long id) {
+        // 检查是否有子分类
+        Long subCount = categoryMapper.selectCount(
+                new LambdaQueryWrapper<CategoryEntity>()
+                        .eq(CategoryEntity::getParentId, id)
+        );
+        if (subCount > 0) {
+            throw new BusinessException("无法删除此分类，此分类下还有子分类");
+        }
+        // 删除分类关联
+        categoryExtendMapper.delete(
+                new LambdaQueryWrapper<CategoryExtendEntity>()
+                        .eq(CategoryExtendEntity::getCategoryId, id)
+        );
+        categoryMapper.deleteById(id);
+    }
+
+    @Override
     public GoodsDetailVO getGoodsDetail(Long id) {
-        // 查询商品信息
+        if (id == null || id <= 0) {
+            throw new BusinessException("商品不存在");
+        }
         GoodsEntity goods = goodsMapper.selectById(id);
-        if (goods == null || goods.getIsDel()) {
+        if (goods == null || GoodsEntity.STATUS_DELETED.equals(goods.getIsDel())) {
             throw new BusinessException("商品不存在");
         }
 
@@ -221,6 +282,7 @@ public class GoodsServiceImpl implements GoodsService {
     public boolean addGoods(GoodsAddDTO dto) {
         GoodsEntity entity = new GoodsEntity();
         entity.setName(dto.getName());
+        entity.setGoodsNo(generateGoodsNo());
         entity.setImg(dto.getImg());
         entity.setSellPrice(dto.getSellPrice());
         entity.setMarketPrice(dto.getMarketPrice());
@@ -231,7 +293,7 @@ public class GoodsServiceImpl implements GoodsService {
         entity.setContent(dto.getContent());
         entity.setSale(0);
         entity.setCreateTime(LocalDateTime.now());
-        entity.setIsDel(false);
+        entity.setIsDel(GoodsEntity.STATUS_ON_SALE);
 
         int rows = goodsMapper.insert(entity);
         if (rows <= 0) {
@@ -251,9 +313,16 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public boolean putOnSale(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("上架失败");
+        }
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null) {
+            throw new BusinessException("商品不存在");
+        }
         LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(GoodsEntity::getId, id)
-                .set(GoodsEntity::getIsDel, false)
+                .set(GoodsEntity::getIsDel, GoodsEntity.STATUS_ON_SALE)
                 .set(GoodsEntity::getUpTime, LocalDateTime.now())
                 .set(GoodsEntity::getDownTime, null);
         return goodsMapper.update(null, wrapper) > 0;
@@ -261,11 +330,147 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public boolean putOffSale(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("下架失败");
+        }
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null) {
+            throw new BusinessException("商品不存在");
+        }
         LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(GoodsEntity::getId, id)
-                .set(GoodsEntity::getIsDel, true)
+                .set(GoodsEntity::getIsDel, GoodsEntity.STATUS_OFF_SALE)
                 .set(GoodsEntity::getUpTime, null)
                 .set(GoodsEntity::getDownTime, LocalDateTime.now());
         return goodsMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean submitForReview(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("操作失败");
+        }
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null) {
+            throw new BusinessException("商品不存在");
+        }
+        LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(GoodsEntity::getId, id)
+                .set(GoodsEntity::getIsDel, GoodsEntity.STATUS_PENDING_REVIEW)
+                .set(GoodsEntity::getUpTime, null)
+                .set(GoodsEntity::getDownTime, null);
+        return goodsMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean softDelete(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("删除失败");
+        }
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null) {
+            throw new BusinessException("商品不存在");
+        }
+        LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(GoodsEntity::getId, id)
+                .set(GoodsEntity::getIsDel, GoodsEntity.STATUS_DELETED)
+                .set(GoodsEntity::getUpTime, null)
+                .set(GoodsEntity::getDownTime, null);
+        return goodsMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    public boolean restore(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("还原失败");
+        }
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null) {
+            throw new BusinessException("商品不存在");
+        }
+        LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(GoodsEntity::getId, id)
+                .set(GoodsEntity::getIsDel, GoodsEntity.STATUS_ON_SALE)
+                .set(GoodsEntity::getUpTime, LocalDateTime.now())
+                .set(GoodsEntity::getDownTime, null);
+        return goodsMapper.update(null, wrapper) > 0;
+    }
+
+    @Override
+    @Transactional
+    public boolean hardDelete(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("删除失败");
+        }
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null) {
+            throw new BusinessException("商品不存在");
+        }
+
+        List<GoodsPhotoRelationEntity> photoRelations = goodsPhotoRelationMapper.selectList(
+                new LambdaQueryWrapper<GoodsPhotoRelationEntity>()
+                        .eq(GoodsPhotoRelationEntity::getGoodsId, id)
+        );
+
+        for (GoodsPhotoRelationEntity relation : photoRelations) {
+            Long count = goodsPhotoRelationMapper.selectCount(
+                    new LambdaQueryWrapper<GoodsPhotoRelationEntity>()
+                            .eq(GoodsPhotoRelationEntity::getPhotoId, relation.getPhotoId())
+                            .ne(GoodsPhotoRelationEntity::getGoodsId, id)
+            );
+            if (count == 0) {
+                GoodsPhotoEntity photo = goodsPhotoMapper.selectById(relation.getPhotoId());
+                if (photo != null && photo.getImg() != null) {
+                    File imgFile = new File(photo.getImg());
+                    if (imgFile.exists()) {
+                        imgFile.delete();
+                    }
+                }
+                goodsPhotoMapper.deleteById(relation.getPhotoId());
+            }
+        }
+
+        goodsPhotoRelationMapper.delete(
+                new LambdaQueryWrapper<GoodsPhotoRelationEntity>()
+                        .eq(GoodsPhotoRelationEntity::getGoodsId, id)
+        );
+
+        goodsMapper.deleteById(id);
+        return true;
+    }
+
+    @Override
+    public boolean batchUpdateStatus(List<Long> ids, Integer status) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择要操作的商品");
+        }
+        LambdaUpdateWrapper<GoodsEntity> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.in(GoodsEntity::getId, ids);
+
+        if (GoodsEntity.STATUS_ON_SALE.equals(status)) {
+            wrapper.set(GoodsEntity::getIsDel, GoodsEntity.STATUS_ON_SALE)
+                    .set(GoodsEntity::getUpTime, LocalDateTime.now())
+                    .set(GoodsEntity::getDownTime, null);
+        } else if (GoodsEntity.STATUS_OFF_SALE.equals(status)) {
+            wrapper.set(GoodsEntity::getIsDel, GoodsEntity.STATUS_OFF_SALE)
+                    .set(GoodsEntity::getUpTime, null)
+                    .set(GoodsEntity::getDownTime, LocalDateTime.now());
+        } else if (GoodsEntity.STATUS_PENDING_REVIEW.equals(status)) {
+            wrapper.set(GoodsEntity::getIsDel, GoodsEntity.STATUS_PENDING_REVIEW)
+                    .set(GoodsEntity::getUpTime, null)
+                    .set(GoodsEntity::getDownTime, null);
+        } else if (GoodsEntity.STATUS_DELETED.equals(status)) {
+            wrapper.set(GoodsEntity::getIsDel, GoodsEntity.STATUS_DELETED)
+                    .set(GoodsEntity::getUpTime, null)
+                    .set(GoodsEntity::getDownTime, null);
+        } else {
+            throw new BusinessException("无效的状态值");
+        }
+
+        return goodsMapper.update(null, wrapper) > 0;
+    }
+
+    private String generateGoodsNo() {
+        return "G" + System.currentTimeMillis() + new Random().nextInt(90) + 10;
     }
 }

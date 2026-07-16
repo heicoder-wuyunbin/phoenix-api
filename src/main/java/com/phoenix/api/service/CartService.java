@@ -130,7 +130,7 @@ public class CartService {
 
             // 查询商品信息
             GoodsEntity goods = goodsMapper.selectById(product.getGoodsId());
-            if (goods == null || goods.getIsDel()) {
+            if (goods == null || (goods.getIsDel() != null && goods.getIsDel() != 0)) {
                 // 商品不存在或已删除，从购物车移除
                 redisTemplate.opsForHash().delete(key, skuId.toString());
                 continue;

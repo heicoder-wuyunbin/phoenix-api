@@ -13,4 +13,6 @@ public class GoodsVO {
     private String categoryName;
     private Integer sales;
     private Integer stock;
+    private Integer status;
+    private Boolean isDel;
 }
