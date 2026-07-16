@@ -202,7 +202,7 @@ public class UserServiceImpl implements UserService {
         }
 
         String code = java.util.Base64.getEncoder().encodeToString((email + "|" + memberRow.getUserId()).getBytes());
-        String url = siteConfig.getBaseUrl() + "/api/user/check-mail?code=" + code;
+        String url = siteConfig.getBaseUrl() + "/api/user/check-mail-page?code=" + code;
         smsUtil.sendMail(email, url);
     }
 
