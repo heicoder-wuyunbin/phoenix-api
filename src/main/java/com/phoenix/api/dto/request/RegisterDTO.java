@@ -6,6 +6,9 @@ import lombok.Data;
 
 @Data
 public class RegisterDTO {
+    /** 注册类型：email 或 mobile */
+    private String regType;
+
     private String email;
 
     private String mobile;

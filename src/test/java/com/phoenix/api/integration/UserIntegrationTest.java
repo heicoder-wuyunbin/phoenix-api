@@ -66,6 +66,7 @@ class UserIntegrationTest extends BaseIntegrationTest {
         redisTemplate.opsForValue().set("code:" + mobile, mobileCode, 5, TimeUnit.MINUTES);
         
         RegisterDTO registerDTO = new RegisterDTO();
+        registerDTO.setRegType("mobile");
         registerDTO.setUsername("testuser");
         registerDTO.setPassword("password123");
         registerDTO.setRepassword("password123");

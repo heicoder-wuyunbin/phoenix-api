@@ -15,7 +15,7 @@ import java.util.Map;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:phoenix_jwt_secret_key_2026}")
+    @Value("${jwt.secret:phoenix-jwt-secret-key-2026-admin}")
     private String secret;
 
     @Value("${jwt.expire:86400000}")

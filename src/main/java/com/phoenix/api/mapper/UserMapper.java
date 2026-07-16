@@ -8,9 +8,8 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface UserMapper extends BaseMapper<UserEntity> {
-    @Select("SELECT u.id, u.username, u.password, u.head_ico, m.status " +
+    @Select("SELECT u.id, u.username, u.password, u.head_ico " +
             "FROM tb_user u JOIN tb_member m ON u.id = m.user_id " +
-            "WHERE (u.username = #{loginInfo} OR m.email = #{loginInfo} OR m.mobile = #{loginInfo}) " +
-            "AND m.status = 1")
+            "WHERE (u.username = #{loginInfo} OR m.email = #{loginInfo} OR m.mobile = #{loginInfo})")
     UserEntity findByLoginInfo(@Param("loginInfo") String loginInfo);
 }

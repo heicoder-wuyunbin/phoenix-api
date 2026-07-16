@@ -36,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final JwtUtil jwtUtil;
     private final SiteConfig siteConfig;
     private final CaptchaUtil captchaUtil;
+    private final SmsUtil smsUtil;
 
     @Override
     public LoginResponseDTO login(LoginDTO loginDTO) {
@@ -47,6 +48,18 @@ public class UserServiceImpl implements UserService {
         String encryptedPassword = MD5Util.encode(loginDTO.getPassword());
         if (!encryptedPassword.equals(user.getPassword())) {
             throw new BusinessException("未找到用户信息");
+        }
+
+        // 检查会员状态
+        MemberEntity member = memberMapper.selectOne(Wrappers.lambdaQuery(MemberEntity.class)
+                .eq(MemberEntity::getUserId, user.getId()));
+        if (member != null) {
+            if (member.getStatus() == 3) {
+                throw new BusinessException("账号未激活，请先验证邮箱");
+            }
+            if (member.getStatus() != 1) {
+                throw new BusinessException("账号已被禁用");
+            }
         }
 
         return buildLoginResponse(user);
@@ -69,7 +82,12 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("图形验证码输入不正确");
         }
 
-        if (regOption == 1) {
+        String regType = registerDTO.getRegType();
+        if (regType == null || regType.isEmpty()) {
+            throw new BusinessException("请选择注册方式");
+        }
+
+        if ("email".equals(regType)) {
             if (!CaptchaUtil.isEmail(registerDTO.getEmail())) {
                 throw new BusinessException("邮箱格式不正确");
             }
@@ -81,7 +99,7 @@ public class UserServiceImpl implements UserService {
                 }
                 throw new BusinessException("邮箱已经被注册");
             }
-        } else if (regOption == 3) {
+        } else if ("mobile".equals(regType)) {
             if (!CaptchaUtil.isMobile(registerDTO.getMobile())) {
                 throw new BusinessException("手机号格式不正确");
             }
@@ -93,6 +111,8 @@ public class UserServiceImpl implements UserService {
             if (existingMember != null) {
                 throw new BusinessException("手机号已经被注册");
             }
+        } else {
+            throw new BusinessException("不支持的注册方式");
         }
 
         UserEntity existingUser = userMapper.selectOne(Wrappers.lambdaQuery(UserEntity.class)
@@ -109,12 +129,12 @@ public class UserServiceImpl implements UserService {
         MemberEntity member = new MemberEntity();
         member.setUserId(user.getId());
         member.setTime(LocalDateTime.now());
-        member.setStatus(regOption == 1 ? 3 : 1);
+        member.setStatus("email".equals(regType) ? 3 : 1);
         member.setMobile(registerDTO.getMobile());
         member.setEmail(registerDTO.getEmail());
         memberMapper.insert(member);
 
-        if (regOption == 1) {
+        if ("email".equals(regType)) {
             sendCheckMail(registerDTO.getEmail());
         }
     }
@@ -183,7 +203,7 @@ public class UserServiceImpl implements UserService {
 
         String code = java.util.Base64.getEncoder().encodeToString((email + "|" + memberRow.getUserId()).getBytes());
         String url = siteConfig.getBaseUrl() + "/api/user/check-mail?code=" + code;
-        SmsUtil.sendMail(email, url);
+        smsUtil.sendMail(email, url);
     }
 
     private LoginResponseDTO buildLoginResponse(UserEntity user) {

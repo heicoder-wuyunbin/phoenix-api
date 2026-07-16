@@ -20,6 +20,8 @@ public class GoodsDetailVO {
     private String content;
     private Boolean hasSpec;
     private List<SpecVO> specs;
+    private List<SpecTreeVO> specTree;
+    private List<SkuVO> skuList;
 
     @Data
     public static class SpecVO {

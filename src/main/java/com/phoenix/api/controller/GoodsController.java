@@ -5,6 +5,7 @@ import com.phoenix.api.dto.GoodsAddDTO;
 import com.phoenix.api.entity.CategoryEntity;
 import com.phoenix.api.result.Result;
 import com.phoenix.api.service.GoodsService;
+import com.phoenix.api.vo.GoodsDetailVO;
 import com.phoenix.api.vo.GoodsVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,17 @@ public class GoodsController {
     public Result<List<CategoryEntity>> categories() {
         List<CategoryEntity> list = goodsService.getCategoryList();
         return Result.success(list);
+    }
+
+    /**
+     * 获取商品详情
+     * @param id 商品ID
+     * @return 商品详情（含规格树和SKU列表）
+     */
+    @GetMapping("/detail")
+    public Result<GoodsDetailVO> detail(@RequestParam Long id) {
+        GoodsDetailVO detail = goodsService.getGoodsDetail(id);
+        return Result.success(detail);
     }
 
     @GetMapping("/list")

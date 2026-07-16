@@ -3,21 +3,28 @@ package com.phoenix.api.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phoenix.api.dto.GoodsAddDTO;
 import com.phoenix.api.entity.CategoryEntity;
 import com.phoenix.api.entity.CategoryExtendEntity;
 import com.phoenix.api.entity.GoodsEntity;
+import com.phoenix.api.entity.ProductEntity;
+import com.phoenix.api.exception.BusinessException;
 import com.phoenix.api.mapper.CategoryExtendMapper;
 import com.phoenix.api.mapper.CategoryMapper;
 import com.phoenix.api.mapper.GoodsMapper;
+import com.phoenix.api.mapper.ProductMapper;
 import com.phoenix.api.service.GoodsService;
+import com.phoenix.api.vo.GoodsDetailVO;
 import com.phoenix.api.vo.GoodsVO;
+import com.phoenix.api.vo.SkuVO;
+import com.phoenix.api.vo.SpecTreeVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +34,9 @@ public class GoodsServiceImpl implements GoodsService {
     private final GoodsMapper goodsMapper;
     private final CategoryMapper categoryMapper;
     private final CategoryExtendMapper categoryExtendMapper;
+    private final ProductMapper productMapper;
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public Page<GoodsVO> getGoodsList(Long categoryId, Integer pageNum, Integer pageSize) {
@@ -100,6 +110,111 @@ public class GoodsServiceImpl implements GoodsService {
                         .eq(CategoryEntity::getParentId, 0)
                         .orderByAsc(CategoryEntity::getSort)
         );
+    }
+
+    @Override
+    public GoodsDetailVO getGoodsDetail(Long id) {
+        // 查询商品信息
+        GoodsEntity goods = goodsMapper.selectById(id);
+        if (goods == null || goods.getIsDel()) {
+            throw new BusinessException("商品不存在");
+        }
+
+        // 查询关联的 Product（SKU）列表
+        List<ProductEntity> products = productMapper.selectList(
+                new LambdaQueryWrapper<ProductEntity>()
+                        .eq(ProductEntity::getGoodsId, id)
+                        .eq(ProductEntity::getIsDel, false)
+        );
+
+        // 构建规格树和 SKU 列表
+        List<SpecTreeVO> specTree = buildSpecTree(products);
+        List<SkuVO> skuList = buildSkuList(products);
+
+        // 组装 GoodsDetailVO
+        GoodsDetailVO vo = new GoodsDetailVO();
+        vo.setId(goods.getId());
+        vo.setName(goods.getName());
+        vo.setImage(goods.getImg());
+        vo.setPrice(goods.getSellPrice());
+        vo.setMarketPrice(goods.getMarketPrice());
+        vo.setStock(goods.getStoreNums());
+        vo.setSales(goods.getSale());
+        vo.setContent(goods.getContent());
+        vo.setHasSpec(!specTree.isEmpty());
+        vo.setSpecTree(specTree);
+        vo.setSkuList(skuList);
+
+        // 如果存在 SKU，使用第一个 SKU 的价格作为默认价格
+        if (!skuList.isEmpty()) {
+            vo.setPrice(skuList.get(0).getPrice());
+            vo.setStock(products.stream().mapToInt(ProductEntity::getStoreNums).sum());
+        }
+
+        return vo;
+    }
+
+    /**
+     * 构建规格树
+     * 对应原代码：./old/iwebshop/controllers/goods.php 第 195-205 行
+     * 使用 LinkedHashMap 保持插入顺序
+     */
+    private List<SpecTreeVO> buildSpecTree(List<ProductEntity> products) {
+        Map<String, LinkedHashSet<String>> specMap = new LinkedHashMap<>();
+
+        for (ProductEntity product : products) {
+            Map<String, String> spec = parseSpecArray(product.getSpecArray());
+            for (Map.Entry<String, String> entry : spec.entrySet()) {
+                specMap.computeIfAbsent(entry.getKey(), k -> new LinkedHashSet<>())
+                       .add(entry.getValue());
+            }
+        }
+
+        return specMap.entrySet().stream()
+                .map(entry -> {
+                    SpecTreeVO vo = new SpecTreeVO();
+                    vo.setName(entry.getKey());
+                    vo.setOptions(new ArrayList<>(entry.getValue()));
+                    return vo;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 构建 SKU 列表
+     * 对应原代码：./old/iwebshop/controllers/goods.php 第 207-214 行
+     */
+    private List<SkuVO> buildSkuList(List<ProductEntity> products) {
+        return products.stream()
+                .map(product -> {
+                    SkuVO vo = new SkuVO();
+                    vo.setId(product.getId());
+                    vo.setSpec(parseSpecArray(product.getSpecArray()));
+                    vo.setPrice(product.getSellPrice());
+                    vo.setStock(product.getStoreNums());
+                    vo.setImage(product.getImg());
+                    return vo;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 解析 specArray JSON 字符串
+     * 使用 Jackson 解析 JSON 格式的规格数据
+     */
+    private Map<String, String> parseSpecArray(String specArray) {
+        if (specArray == null || specArray.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            return objectMapper.readValue(
+                    specArray,
+                    new TypeReference<Map<String, String>>() {}
+            );
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
     }
 
     @Override
