@@ -21,7 +21,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -204,6 +207,17 @@ public class UserServiceImpl implements UserService {
         String code = java.util.Base64.getEncoder().encodeToString((email + "|" + memberRow.getUserId()).getBytes());
         String url = siteConfig.getBaseUrl() + "/api/user/check-mail-page?code=" + code;
         smsUtil.sendMail(email, url);
+    }
+
+    @Override
+    public void updatePassword(Long userId, Map<String, Object> params) {
+        // TODO: 实现修改密码逻辑
+    }
+
+    @Override
+    public String updateAvatar(Long userId, MultipartFile file) {
+        // TODO: 实现头像上传逻辑
+        return null;
     }
 
     private LoginResponseDTO buildLoginResponse(UserEntity user) {
